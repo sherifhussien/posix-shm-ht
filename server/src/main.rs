@@ -1,12 +1,17 @@
 mod args;
 mod hash_table;
 mod ipc;
+mod shared_mem;
+
+use std::{thread, time::{self, Duration}};
 
 use log::{info, warn};
 use env_logger::Env;
 
-use ipc::SharedMemory;
+use ipc::IPC;
 use hash_table::HashTable;
+
+const DURATION: Duration = time::Duration::from_secs(1);
 
 
 fn main() {
@@ -18,7 +23,7 @@ fn main() {
     let mut ht: HashTable<String, i32> = hash_table::HashTable::new(ht_size as usize);
     info!("{:?}", ht);
 
-    let mut shm: SharedMemory = SharedMemory::new();
+    let mut shm: IPC = IPC::new();
     
     match shm.init() {
         Ok(_) => info!("ipc >> created and mapped shm"),
@@ -27,11 +32,15 @@ fn main() {
     
     let m = shm.read();
     info!("Read from shared memory >> {:?}", m);
+    
+    thread::sleep(DURATION);
 
-    shm.write(10);
+    shm.write(50);
 
-    let m = shm.read();
-    info!("Read from shared memory >> {:?}", m);
+    // let m = shm.read();
+    // info!("Read from shared memory >> {:?}", m);
+
+    thread::sleep(DURATION);
 
     match shm.clean() {
         Ok(_) => info!("ipc >> cleaned shm"),

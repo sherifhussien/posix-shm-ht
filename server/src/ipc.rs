@@ -1,34 +1,29 @@
 use std::mem::size_of;
 use std::os::raw::c_void;
-use std::ptr::{null_mut, write};
+use std::ptr::null_mut;
 
-use rustix::fs::{ftruncate, Mode};
-use rustix::mm::{self, mmap, munmap};
 use rustix::{io, shm};
+use rustix::fs::{ftruncate, Mode};
+use rustix::mm::{mmap, munmap, ProtFlags, MapFlags};
 
-/// A type describing the data to be shared
-#[repr(C)]
-#[derive(Debug)] 
-pub struct Message {
-    value: i32,
-}
+use crate::shared_mem::{self, SharedMemory};
 
 const SHM_NAME: &str = "/my-shm";
-const SHM_SIZE: usize = 4096; // 4KB
+const SHM_SIZE: usize = size_of::<SharedMemory>();
 
-pub struct SharedMemory {
-    ptr: Option<*mut c_void>, 
+pub struct IPC {
+    ptr: *mut c_void,
 }
 
-impl SharedMemory {
+impl IPC {
 
     pub fn new() -> Self {
-        SharedMemory {
-            ptr: None
+        IPC {
+            ptr: null_mut(),
         }
     }
     
-    /// create or open the shm object
+    /// create the shm object
     pub fn init(&mut self) -> io::Result<()>  {
         let fd = shm::open(
             SHM_NAME,
@@ -39,19 +34,19 @@ impl SharedMemory {
         // resize the shm object, default is 0
         ftruncate(&fd, SHM_SIZE as u64)?;
 
-        // map the shared memory object into our address space
+        // map the shm object into our address space
         let ptr = unsafe {
             mmap(
                 null_mut(),
                 SHM_SIZE,
-                mm::ProtFlags::READ | mm::ProtFlags::WRITE,
-                mm::MapFlags::SHARED,
+                ProtFlags::READ | ProtFlags::WRITE,
+                MapFlags::SHARED,
                 fd,
                 0,
             )?
         };
 
-        self.ptr = Some(ptr);
+        self.ptr = ptr;
 
         Ok(())
     }
@@ -59,7 +54,7 @@ impl SharedMemory {
     /// unmap and remove the shm
     pub fn clean(&self) -> io::Result<()> {
         unsafe {
-            munmap(self.ptr.unwrap(), size_of::<Message>())?;
+            munmap(self.ptr, SHM_SIZE)?;
         }
 
         shm::unlink(SHM_NAME)?;
@@ -68,16 +63,12 @@ impl SharedMemory {
     }
 
     /// read from shm
-    pub fn read(&self) -> &Message {
-        let msg: &Message = unsafe { &*self.ptr.unwrap().cast::<Message>() };
-        msg
+    pub fn read(&self) -> usize {
+        shared_mem::shm_read(self.ptr)
     }
 
     /// write from shm
-    pub fn write(&self, value:i32 ) {
-        unsafe {
-            let msg = self.ptr.unwrap().cast();
-            write(msg, Message { value });
-        }
+    pub fn write(&self, value: usize ) {
+        shared_mem::shm_write(self.ptr, value)
     }
 }

@@ -7,5 +7,6 @@ edition = "2021"
 clap = { version = "4.5.20", features = ["cargo"] }
 env_logger = "0.11.5"
 log = "0.4.22"
-memoffset = "0.9.1"
-rustix = { version = "0.38.39", features = ["fs", "mm", "shm", "use-libc"] }
+rustix = { version = "0.38.39", features = ["fs", "shm", "mm"] }
+
+utils = { path = "../utils" }

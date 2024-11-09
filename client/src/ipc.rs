@@ -1,4 +1,3 @@
-use std::mem::size_of;
 use std::os::raw::c_void;
 use std::ptr::null_mut;
 
@@ -6,11 +5,9 @@ use rustix::{io, shm};
 use rustix::fs::Mode;
 use rustix::mm::{mmap, munmap, MapFlags, ProtFlags};
 
-use crate::shared_mem::{self, SharedMemory};
-
-const SHM_NAME: &str = "/my-shm";
-const SHM_SIZE: usize = size_of::<SharedMemory>();
-
+use utils::shared_mem::{SHM_NAME, SHM_SIZE};
+use utils::message::Message;
+use crate::shmem;
 
 pub struct IPC {
     ptr: *mut c_void,
@@ -24,8 +21,8 @@ impl IPC {
         }
     }
     
-    /// create the shm object
-    pub fn init(&mut self) -> io::Result<()>  {
+    pub fn init(&mut self) -> io::Result<()> {
+        // open the shm object
         let fd = shm::open(
             SHM_NAME,
             shm::OFlags::RDWR,
@@ -50,7 +47,7 @@ impl IPC {
         Ok(())
     }
 
-    /// unmap the shm
+    /// unmap the shm object
     pub fn clean(&self) -> io::Result<()> {
         unsafe {
             munmap(self.ptr, SHM_SIZE)?;
@@ -59,13 +56,21 @@ impl IPC {
         Ok(())
     }
 
-    /// read from shm
-    pub fn read(&self) -> usize {
-        shared_mem::shm_read(self.ptr)
+    // writes message to shm
+    pub fn write(&self, message: Message) -> io::Result<()> {
+        shmem::enqueue(self.ptr, message);
+
+        Ok(())
     }
 
-    /// write from shm
-    pub fn write(&self, value: usize ) {
-        shared_mem::shm_write(self.ptr, value)
+    // reads message from shm
+    pub fn read(&self) -> io::Result<Message> {
+        let message = shmem::dequeue(self.ptr);
+        Ok(message)
+    }
+
+    /// read from shm - used for debugging
+    pub fn debug_read(&self) -> Message {    
+        shmem::shm_read(self.ptr)
     }
 }

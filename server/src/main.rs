@@ -15,7 +15,6 @@ use ipc::IPC;
 
 const DURATION: Duration = time::Duration::from_secs(5);
 
-
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 

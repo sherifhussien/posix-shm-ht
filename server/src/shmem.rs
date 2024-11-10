@@ -1,4 +1,3 @@
-use std::ptr::write;
 use std::os::raw::c_void;
 
 use log::info;
@@ -69,12 +68,4 @@ pub fn shm_read(ptr: *mut c_void) -> Message {
     info!("inside shm_read m3 {:?}", buffer[2]);
     
     buffer[0].clone()
-}
-
-/// write to shm - used for debugging
-pub fn shm_write<T>(ptr: *mut c_void, value: T ) {    
-    unsafe {
-        // overwites a memory location
-        write(ptr as *mut T,  value );
-    }
 }

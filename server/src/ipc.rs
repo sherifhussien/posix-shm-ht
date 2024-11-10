@@ -9,7 +9,6 @@ use utils::shared_mem::{SHM_NAME, SHM_SIZE};
 use utils::message::Message;
 use crate::shmem;
 
-
 pub struct IPC {
     ptr: *mut c_void,
 }

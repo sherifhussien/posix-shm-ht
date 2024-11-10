@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 clap = { version = "4.5.20", features = ["cargo"] }
 env_logger = "0.11.5"
+libc = "0.2.162"
 log = "0.4.22"
 rustix = { version = "0.38.39", features = ["fs", "shm", "mm"] }
 

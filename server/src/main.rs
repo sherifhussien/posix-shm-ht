@@ -2,6 +2,7 @@ mod args;
 mod hash_table;
 mod ipc;
 mod shmem;
+mod sem;
 
 use std::{thread, time::{self, Duration}};
 
@@ -9,6 +10,7 @@ use log::{info, warn};
 use env_logger::Env;
 
 use utils::message::{self, Message};
+use utils::serliaize;
 use hash_table::HashTable;
 use ipc::IPC;
 
@@ -37,29 +39,14 @@ fn main() {
     
     thread::sleep(DURATION);
     
-    info!("should consume 3 requests");
+    info!("should consume 1 request");
     ipc.debug_read();
     
-    let message = Message {
-        typ: message::CLIENT_GET,
-        content: string_to_fixed_array("tesw")
-    };
-    ipc.write(message);
-    
-    let message = Message {
-        typ: message::CLIENT_GET,
-        content: string_to_fixed_array("tesx")
-    };
-    ipc.write(message);
-    
-    let message = Message {
-        typ: message::CLIENT_GET,
-        content: string_to_fixed_array("tesy")
-    };
-    ipc.write(message);
-
-    thread::sleep(DURATION);
-    thread::sleep(DURATION);
+    // let message = Message {
+    //     typ: message::CLIENT_GET,
+    //     content: serliaize("tesw")
+    // };
+    // ipc.write(message);
 
     /* test */
 
@@ -67,14 +54,4 @@ fn main() {
         Ok(_) => info!("ipc >> cleaned shm"),
         Err(err) => warn!("ipc >> cleaning error >> {}", err),
     }
-}
-
-fn string_to_fixed_array(s: &str) -> [u8; 16] {
-    let mut array = [0u8; 16];
-    let bytes = s.as_bytes();
-
-    let len = bytes.len().min(16);
-    array[..len].copy_from_slice(&bytes[..len]);
-
-    array
 }

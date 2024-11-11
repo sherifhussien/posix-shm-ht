@@ -1,8 +1,7 @@
 pub mod message;
 pub mod shared_mem;
-pub mod sem;
 
-
+// TODO: check
 pub fn serliaize(s: &str) -> [u8; 16] {
     let mut array = [0u8; 16];
     let bytes = s.as_bytes();

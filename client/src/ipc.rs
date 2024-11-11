@@ -1,12 +1,10 @@
-use std::os::raw::{c_uint, c_void};
-use std::ffi::CString;
+use std::os::raw::c_void;
 use std::ptr::null_mut;
 
-use libc::{sem_t, sem_open, sem_close, sem_wait, sem_post, sem_unlink, O_RDWR, O_CREAT, O_EXCL, SEM_FAILED, __error, S_IRUSR, S_IWUSR, EEXIST, EACCES, EINTR, EINVAL, EMFILE, ENAMETOOLONG, ENFILE, ENOENT, ENOMEM};
+use libc::sem_t;
 use rustix::{io, shm};
 use rustix::fs::Mode;
 use rustix::mm::{mmap, munmap, MapFlags, ProtFlags};
-use log::{info, warn};
 
 use utils::shared_mem::{ SHM_NAME, SHM_SIZE};
 use utils::message::Message;
@@ -47,7 +45,7 @@ impl IPC {
 
 
         // map the shm object into our address space
-        let shm_ptr = unsafe {
+        let shm_ptr: *mut c_void = unsafe {
             mmap(
                 null_mut(),
                 SHM_SIZE,

@@ -1,7 +1,7 @@
 use std::collections::LinkedList;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::borrow::Borrow;
-use std::{mem, usize};
+use std::mem;
 
 #[derive(Debug)]
 pub struct HashTable<K, V> {
@@ -27,8 +27,8 @@ where
     /// returns an index
     pub fn hash<Q>(&self, key: &Q) -> usize 
     where
-    K: Borrow<Q>,
-    Q: Hash + ?Sized
+        K: Borrow<Q>,
+        Q: Hash + ?Sized
     {
         let mut s = DefaultHasher::new();
         key.hash(&mut s);
@@ -69,6 +69,7 @@ where
         None
     }
 
+    // assumes that the item exists in the ht
     pub fn remove<Q>(&mut self, k: &Q) -> Option<V> 
     where
         K: Borrow<Q>,
@@ -85,10 +86,11 @@ where
             }
         }
 
-        // workaround 
+        // workaround for bucket.remove
         if idx != -1 {
             let mut split: LinkedList<(K, V)> = bucket.split_off(idx as usize);
             if let Some((_, value)) = split.pop_front() {
+                self.size -= 1;
                 bucket.append(&mut split);
                 return Some(value);
             }

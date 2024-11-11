@@ -1,8 +1,7 @@
 use std::os::raw::c_void;
 use std::ptr::null_mut;
 
-use log::{info, warn};
-use libc::{sem_t, sem_open, sem_close, sem_wait, sem_post, sem_unlink, S_IROTH, S_IWOTH, O_RDWR, O_CREAT, O_EXCL, SEM_FAILED, __error, S_IRUSR, S_IWUSR, EEXIST, EACCES, EINTR, EINVAL, EMFILE, ENAMETOOLONG, ENFILE, ENOENT, ENOMEM};
+use libc::sem_t;
 use rustix::{io, shm};
 use rustix::fs::{ftruncate, Mode};
 use rustix::mm::{mmap, munmap, ProtFlags, MapFlags};
@@ -47,7 +46,7 @@ impl IPC {
         ftruncate(&fd, SHM_SIZE as u64)?;
 
         // map the shm object into our address space
-        let shm_ptr = unsafe {
+        let shm_ptr: *mut c_void = unsafe {
             mmap(
                 null_mut(),
                 SHM_SIZE,
@@ -74,9 +73,8 @@ impl IPC {
         sem::destroy(SEM_NAME_RES);
         
         unsafe {
-            munmap(self.shm_ptr, SHM_SIZE)?;
+            munmap(self.shm_ptr, SHM_SIZE)?
         }
-        
         shm::unlink(SHM_NAME)?;
 
         Ok(())

@@ -4,7 +4,7 @@ mod ipc;
 mod shmem;
 mod sem;
 
-use std::{thread, time::{self, Duration}};
+use std::{thread, time};
 
 use log::{info, warn};
 use env_logger::Env;
@@ -14,44 +14,46 @@ use utils::serliaize;
 use hash_table::HashTable;
 use ipc::IPC;
 
-
-const DURATION: Duration = time::Duration::from_secs(5);
-
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
-    info!("***** Started Server *****");
+    info!("*********************** Started Server ***********************");
 
-    // let ht_size: i32 = args::parse_args();
-    // info!("Hash table size >> {ht_size}");
+    // parse cli args
+    let ht_size: i32 = args::parse_args();
 
-    // let mut ht: HashTable<String, i32> = hash_table::HashTable::new(ht_size as usize);
-    // info!("{:?}", ht);
+    // construct ht
+    let ht: HashTable<String, i32> = hash_table::HashTable::new(ht_size as usize);
+    info!("A hash table with size {} was constructed", ht_size);
 
     let mut ipc: IPC = IPC::new();
     
     match ipc.init() {
-        Ok(_) => info!("ipc >> created and mapped shm"),
-        Err(err) => warn!("ipc >> creation error >> {}", err),
+        Ok(_) => info!("shared memory object was created and mapped successfully"),
+        Err(err) => warn!("unable to create or map shared memory object: {}", err),
     }
 
-    /* test */
-    
-    thread::sleep(DURATION);
-    
-    info!("should consume 1 request");
+    /* start tests */
+    thread::sleep(time::Duration::from_secs(10));
+    test_1(&ipc);
+    /* end tests */
+
+    match ipc.clean() {
+        Ok(_) => info!("cleaned shared memory object"),
+        Err(err) => warn!("unable to clean shared memory object: {}", err),
+    }
+}
+
+fn test_1(ipc: &IPC) {
     ipc.debug_read();
     
     // let message = Message {
     //     typ: message::CLIENT_GET,
     //     content: serliaize("tesw")
     // };
-    // ipc.write(message);
 
-    /* test */
-
-    match ipc.clean() {
-        Ok(_) => info!("ipc >> cleaned shm"),
-        Err(err) => warn!("ipc >> cleaning error >> {}", err),
-    }
+    // match  ipc.write(message) {
+    //     Ok(_) => info!("message was enqueued!"),
+    //     Err(err) => warn!("message can't be enqueued: {}", err),
+    // }
 }

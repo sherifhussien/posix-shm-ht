@@ -29,8 +29,8 @@ fn main() {
     let mut ipc: IPC = IPC::new();
     
     match ipc.init() {
-        Ok(_) => info!("shared memory object was created and mapped successfully"),
-        Err(err) => warn!("unable to create or map shared memory object: {}", err),
+        Ok(_) => info!("IPC >> initialized successfully"),
+        Err(err) => warn!("IPC >> init error: {}", err),
     }
 
     /* start tests */
@@ -39,13 +39,17 @@ fn main() {
     /* end tests */
 
     match ipc.clean() {
-        Ok(_) => info!("cleaned shared memory object"),
-        Err(err) => warn!("unable to clean shared memory object: {}", err),
+        Ok(_) => info!("IPC >> cleaned successfully"),
+        Err(err) => warn!("IPC >> clean error: {}", err),
     }
 }
 
 fn test_1(ipc: &IPC) {
-    ipc.debug_read();
+    
+    match ipc.debug_read() {
+        Ok(_) => info!(">> read message"),
+        Err(err) => warn!(">> can't read message: {}", err),
+    }
     
     // let message = Message {
     //     typ: message::CLIENT_GET,

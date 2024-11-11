@@ -19,8 +19,8 @@ fn main() {
     let mut ipc: IPC = IPC::new();
     
      match ipc.init() {
-        Ok(_) => info!("shared memory object was mapped successfully"),
-        Err(err) => warn!("unable to map shared memory object: {}", err),
+        Ok(_) => info!("IPC >> initialized successfully"),
+        Err(err) => warn!("IPC >> init error: {}", err),
     }
     
     /* test */
@@ -29,8 +29,8 @@ fn main() {
     /* test */
         
     match ipc.clean() {
-        Ok(_) => info!("ipc >> cleaned shm"),
-        Err(err) => warn!("ipc >> cleaning error: {}", err),
+        Ok(_) => info!("IPC >> cleaned successfully"),
+        Err(err) => warn!("IPC >> clean error: {}", err),
     }
 }
 
@@ -41,7 +41,7 @@ fn test_1(ipc: &IPC) {
     };
 
     match ipc.write(message) {
-        Ok(_) => info!("message was enqueued!"),
-        Err(err) => warn!("message can't be enqueued: {}", err),
+        Ok(_) => info!(">> wrote message"),
+        Err(err) => warn!(">> can't write message: {}", err),
     }
 }

@@ -1,25 +1,33 @@
+use std::io::{self, Error, ErrorKind};
 use std::os::raw::c_void;
 use std::{thread, time};
 
 use log::{info, warn};
-use libc::{sem_t, sem_wait, sem_post};
+use libc::sem_t;
 
 use utils::message::Message;
 use utils::shared_mem::{SharedMemory, Q_CAPACITY};
+use utils::sem;
 
-// TODO: Handle full queue
 /// enqueue to requests buffer
-pub fn enqueue(shm_ptr: *mut c_void, sem:*mut sem_t, message: Message) {
+pub fn enqueue(shm_ptr: *mut c_void, sem:*mut sem_t, message: Message) -> io::Result<()> {
     // raw pointer
     let shm_ptr = shm_ptr as *mut SharedMemory;
     let shm: &mut SharedMemory = unsafe{ &mut *shm_ptr };
 
-    info!("trying to aquire lock");
-    let aquired = unsafe { sem_wait(sem) == 0 };
-    info!("aquired lock: {aquired}");
+    sem::wait(sem)?;
 
     /* enters critical region */
+
+    // TODO: remove blocking operation
     thread::sleep(time::Duration::from_secs(40));
+
+    let size = shm.req_size;
+    if size == Q_CAPACITY {
+        // release lock 
+        sem::post(sem)?;
+        return Err(Error::new(ErrorKind::OutOfMemory, "enqueue >> requests buffer is full"));
+    }
 
     // gets rear value
     let rear = shm.req_rear;
@@ -33,23 +41,31 @@ pub fn enqueue(shm_ptr: *mut c_void, sem:*mut sem_t, message: Message) {
     // writes rear value
     shm.req_rear = (shm.req_rear + 1) % Q_CAPACITY;
 
+    // writes size
+    shm.req_size = shm.req_size + 1;
+
     /* leaves critical region */
 
-    let released = unsafe {sem_post(sem) == 0};
-    info!("lock released: {released}");
+    sem::post(sem)?;
+
+    Ok(())
 }
 
-// TODO: Handle empty queue
 /// dequeue from response buffer
-pub fn dequeue(shm_ptr: *mut c_void, sem:*mut sem_t) -> Message {
+pub fn dequeue(shm_ptr: *mut c_void, sem:*mut sem_t) -> io::Result<Message> {
     let shm_ptr = shm_ptr as *mut SharedMemory;
     let shm: &mut SharedMemory = unsafe { &mut *shm_ptr };
 
-    info!("trying to aquire lock");
-    let aquired = unsafe { sem_wait(sem) == 0 };
-    info!("aquired lock: {aquired}");
+    sem::wait(sem)?;
 
     /* enters critical region */
+
+    let size = shm.res_size;
+    if size == 0 {
+        // release lock 
+        sem::post(sem)?;
+        return Err(Error::new(ErrorKind::NotFound, "dequeue >> response buffer is empty"));
+    }
 
     // gets front value
     let front = shm.res_front;
@@ -62,29 +78,28 @@ pub fn dequeue(shm_ptr: *mut c_void, sem:*mut sem_t) -> Message {
     // writes front value
     shm.res_front = (shm.res_front + 1) % Q_CAPACITY;
 
+    // writes size
+    shm.res_size = shm.res_size - 1;
+
     /* leaves critical region */
 
-    let released = unsafe {sem_post(sem) == 0};
-    info!("lock released: {released}");
+    sem::post(sem)?;
 
-    message
+    Ok(message)
 }
 
 /// read from shm - used for debugging
-pub fn shm_read(shm_ptr: *mut c_void, sem:*mut sem_t) -> Message {    
+pub fn shm_read(shm_ptr: *mut c_void, sem:*mut sem_t) -> io::Result<Message> {    
     let shm_ptr = shm_ptr as *mut SharedMemory;
     let shm: &SharedMemory = unsafe { &*shm_ptr };
 
-    info!("trying to aquire lock");
-    let aquired = unsafe { sem_wait(sem) == 0 };
-    info!("aquired lock: {aquired}");
+    sem::wait(sem)?;
 
     let buffer = &shm.res_buffer;
     let message = buffer[0].clone();
     info!("inside shm_read message: {:?}", buffer[0]);
 
-    let released = unsafe {sem_post(sem) == 0};
-    info!("lock released: {released}");
+    sem::post(sem)?;
     
-    message
+    Ok(message)
 }

@@ -1,5 +1,6 @@
 pub mod message;
 pub mod shared_mem;
+pub mod sem;
 
 // TODO: check
 pub fn serliaize(s: &str) -> [u8; 16] {

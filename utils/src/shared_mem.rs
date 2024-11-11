@@ -12,9 +12,11 @@ pub struct SharedMemory {
     pub req_buffer: [Message; Q_CAPACITY],
     pub req_front: usize,
     pub req_rear: usize,
+    pub req_size: usize,
 
     // response
     pub res_buffer: [Message; Q_CAPACITY],
     pub res_front: usize,
     pub res_rear: usize,
+    pub res_size: usize,
 }

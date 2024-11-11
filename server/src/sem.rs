@@ -5,8 +5,8 @@ use libc::sem_t;
 use utils::sem;
 
 /// create and open a sem
-pub fn open(sem_name: &str) -> io::Result<*mut sem_t> {
-    sem::open(sem_name, sem::AccessType::SERVER)
+pub fn open(sem_name: &str, initial_value: isize) -> io::Result<*mut sem_t> {
+    sem::open(sem_name, sem::AccessType::SERVER, initial_value)
 }
 
 /// wait on a sem object

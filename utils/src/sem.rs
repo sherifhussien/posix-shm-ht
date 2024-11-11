@@ -11,6 +11,8 @@ use libc::{
 
 pub const REQ_MUTEX_NAME: &str = "/my-req-sem";
 pub const RES_MUTEX_NAME: &str = "/my-res-sem";
+pub const S_SIGNAL_NAME: &str = "/my-server-sig";
+pub const C_SIGNAL_NAME: &str = "/my-client-sig";
 
 const PERMISSIONS: c_uint = (S_IRUSR | S_IWUSR | S_IROTH | S_IWOTH) as c_uint;
 
@@ -20,7 +22,7 @@ pub enum AccessType {
 }
 
 // create or open a sem
-pub fn open(sem_name: &str, access_type: AccessType) -> io::Result<*mut sem_t> {
+pub fn open(sem_name: &str, access_type: AccessType, initial_value: isize) -> io::Result<*mut sem_t> {
     let sem_name = CString::new(sem_name).unwrap();
     let sem: *mut sem_t = match access_type {
         AccessType::SERVER =>  unsafe {
@@ -28,7 +30,7 @@ pub fn open(sem_name: &str, access_type: AccessType) -> io::Result<*mut sem_t> {
                 sem_name.as_ptr(),
                 O_CREAT | O_EXCL,
                 PERMISSIONS,
-                1 // initial value
+                initial_value
             )
         },
         AccessType::CLIENT => unsafe {

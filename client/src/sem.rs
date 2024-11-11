@@ -6,7 +6,7 @@ use utils::sem;
 
 /// open a sem object
 pub fn open(sem_name: &str) -> io::Result<*mut sem_t> {    
-    sem::open(sem_name, sem::AccessType::CLIENT)
+    sem::open(sem_name, sem::AccessType::CLIENT, -1)
 }
 
 /// wait on a sem object

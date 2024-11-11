@@ -10,7 +10,7 @@ use utils::shared_mem::{SharedMemory, Q_CAPACITY};
 use utils::sem;
 
 /// enqueue to requests buffer
-pub fn enqueue(shm_ptr: *mut c_void, sem:*mut sem_t, message: Message) -> io::Result<()> {
+pub fn enqueue(shm_ptr: *mut c_void, sem:*mut sem_t, sig:*mut sem_t, message: Message) -> io::Result<()> {
     // raw pointer
     let shm_ptr = shm_ptr as *mut SharedMemory;
     let shm: &mut SharedMemory = unsafe{ &mut *shm_ptr };
@@ -20,7 +20,7 @@ pub fn enqueue(shm_ptr: *mut c_void, sem:*mut sem_t, message: Message) -> io::Re
     /* enters critical region */
 
     // TODO: remove blocking operation
-    thread::sleep(time::Duration::from_secs(40));
+    thread::sleep(time::Duration::from_secs(10));
 
     let size = shm.req_size;
     if size == Q_CAPACITY {
@@ -47,6 +47,10 @@ pub fn enqueue(shm_ptr: *mut c_void, sem:*mut sem_t, message: Message) -> io::Re
     /* leaves critical region */
 
     sem::post(sem)?;
+
+    //signal server that request was enqueued
+    sem::post(sig)?;
+    info!(">> signal sent to server");
 
     Ok(())
 }
@@ -85,21 +89,5 @@ pub fn dequeue(shm_ptr: *mut c_void, sem:*mut sem_t) -> io::Result<Message> {
 
     sem::post(sem)?;
 
-    Ok(message)
-}
-
-/// read from shm - used for debugging
-pub fn shm_read(shm_ptr: *mut c_void, sem:*mut sem_t) -> io::Result<Message> {    
-    let shm_ptr = shm_ptr as *mut SharedMemory;
-    let shm: &SharedMemory = unsafe { &*shm_ptr };
-
-    sem::wait(sem)?;
-
-    let buffer = &shm.res_buffer;
-    let message = buffer[0].clone();
-    info!("inside shm_read message: {:?}", buffer[0]);
-
-    sem::post(sem)?;
-    
     Ok(message)
 }

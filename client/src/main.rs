@@ -2,8 +2,6 @@ mod ipc;
 mod shmem;
 mod sem;
 
-use std::{thread, time};
-
 use log::{info, warn};
 use env_logger::Env;
 
@@ -24,7 +22,6 @@ fn main() {
     }
     
     /* test */
-    thread::sleep(time::Duration::from_secs(5));
     test_1(&ipc);
     /* test */
         

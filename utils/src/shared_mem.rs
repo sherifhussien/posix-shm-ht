@@ -4,7 +4,7 @@ use crate::message::Message;
 
 pub const SHM_NAME: &str = "/my-shm";
 pub const SHM_SIZE: usize = size_of::<SharedMemory>();
-pub const Q_CAPACITY: usize = 10;
+pub const Q_CAPACITY: usize = 1000;
 
 #[repr(C)]
 pub struct SharedMemory {

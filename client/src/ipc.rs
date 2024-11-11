@@ -12,12 +12,14 @@ use crate::sem;
 use crate::shmem;
 use utils::message::Message;
 use utils::shared_mem::{ SHM_NAME, SHM_SIZE};
-use utils::sem::{REQ_MUTEX_NAME, RES_MUTEX_NAME};
+use utils::sem::{REQ_MUTEX_NAME, RES_MUTEX_NAME, S_SIGNAL_NAME, C_SIGNAL_NAME};
 
 pub struct IPC {
     shm_ptr: *mut c_void,
     req_mutex: *mut sem_t, // controls access to critical region
     res_mutex: *mut sem_t, // controls access to critical region
+    s_sig: *mut sem_t, // control signals to server
+    c_sig: *mut sem_t, // control signals to client
 }
 
 impl IPC {
@@ -27,16 +29,24 @@ impl IPC {
             shm_ptr: null_mut(),
             req_mutex: null_mut(),
             res_mutex: null_mut(),
+            s_sig: null_mut(),
+            c_sig: null_mut(),
         }
     }
     
     pub fn init(&mut self) -> io::Result<()> {
         // open the sem objects
         let req_mutex: *mut sem_t = sem::open(REQ_MUTEX_NAME)?;
-        info!(">> opened semaphore with descriptor: {:?}", req_mutex);
+        info!(">> opened req_mutex semaphore with descriptor: {:?}", req_mutex);
 
         let res_mutex: *mut sem_t = sem::open(RES_MUTEX_NAME)?;
-        info!(">> opened semaphore with descriptor: {:?}", res_mutex);
+        info!(">> opened res_mutex semaphore with descriptor: {:?}", res_mutex);
+
+        let s_sig: *mut sem_t = sem::open(S_SIGNAL_NAME)?;
+        info!(">> opened s_sig semaphore with descriptor: {:?}", s_sig);
+
+        let c_sig: *mut sem_t = sem::open(C_SIGNAL_NAME)?;
+        info!(">> opened c_sig semaphore with descriptor: {:?}", c_sig);
 
         // open the shm object
         let fd = shm::open(
@@ -62,6 +72,8 @@ impl IPC {
         self.shm_ptr = shm_ptr;
         self.req_mutex = req_mutex;
         self.res_mutex = res_mutex;
+        self.s_sig = s_sig;
+        self.c_sig = c_sig;
 
         Ok(())
     }
@@ -72,6 +84,10 @@ impl IPC {
         info!(">> closed req_mutex semaphore with descriptor: {:?}", self.req_mutex);
         sem::close(self.res_mutex)?;
         info!(">> closed res_mutex semaphore with descriptor: {:?}", self.res_mutex);
+        sem::close(self.s_sig)?;
+        info!(">> closed res_mutex semaphore with descriptor: {:?}", self.s_sig);
+        sem::close(self.c_sig)?;
+        info!(">> closed res_mutex semaphore with descriptor: {:?}", self.c_sig);
         
         unsafe {
             munmap(self.shm_ptr, SHM_SIZE)?;
@@ -83,7 +99,7 @@ impl IPC {
 
     // writes message to shm
     pub fn write(&self, message: Message) -> io::Result<()> {
-        shmem::enqueue(self.shm_ptr, self.req_mutex, message.clone())?;
+        shmem::enqueue(self.shm_ptr, self.req_mutex,self.s_sig, message.clone())?;
         info!(">> message enqueued code : {}", message.typ);
 
         Ok(())
@@ -93,13 +109,6 @@ impl IPC {
     pub fn read(&self) -> io::Result<Message> {
         let message = shmem::dequeue(self.shm_ptr, self.res_mutex)?;
         info!(">> message dequeued code: {}", message.typ);
-
-        Ok(message)
-    }
-
-    /// read from shm - used for debugging
-    pub fn debug_read(&self) -> io::Result<Message> {    
-        let message = shmem::shm_read(self.shm_ptr, self.res_mutex)?;
 
         Ok(message)
     }

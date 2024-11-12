@@ -20,9 +20,13 @@ fn main() {
         Err(err) => warn!("IPC >> init error: {}", err),
     }
 
-    // read messages from cli
+    // TODO: threads
+    // ipc.res_handler();
+
+    // TODO: handle logic to either run script or read from cli
+    // loops and reads messages from cli
     cli::read(&ipc);
-        
+  
     match ipc.clean() {
         Ok(_) => info!("IPC >> cleaned successfully"),
         Err(err) => warn!("IPC >> clean error: {}", err),

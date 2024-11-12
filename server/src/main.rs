@@ -24,10 +24,8 @@ fn main() {
         Err(err) => warn!("IPC >> init error: {}", err),
     }
 
-    match ipc.req_handler() {
-        Ok(_) => info!("IPC >> handled all requests!"),
-        Err(err) => warn!("IPC >> req handler error: {}", err),
-    }
+    // loops and waits for requests
+    ipc.req_handler();
 
     match ipc.clean() {
         Ok(_) => info!("IPC >> cleaned successfully"),

@@ -12,7 +12,7 @@ use log::{info, warn};
 use crate::sem;
 use crate::shmem;
 use crate::hash_table::HashTable;
-use utils::message::{Message, deserialize_key, deserialize_value};
+use utils::message::Message;
 use utils::shared_mem::{SHM_NAME, SHM_SIZE};
 use utils::sem::{REQ_MUTEX_NAME, RES_MUTEX_NAME, S_SIGNAL_NAME, C_SIGNAL_NAME};
 
@@ -139,22 +139,32 @@ impl IPC {
     // reads message from shm
     pub fn read(&self) -> io::Result<Message> {
         let message = shmem::dequeue(self.shm_ptr, self.req_mutex)?;
-        info!(">> message dequeued code: {:?} {} {}", message.typ, deserialize_key(message.key), deserialize_value(message.value));
+        info!(">> message dequeued code: {:?} {} {}", message.typ, Message::deserialize_key(message.key), Message::deserialize_value(message.value));
 
         Ok(message)
     }
 
-    pub fn req_handler(&self) -> io::Result<()> {
+    pub fn req_handler(&self) {
         loop {
             // wait for message on request buffer
-            sem::wait(self.s_sig)?;
-
-            // TODO: start thread that serves requests
-            match self.read() {
-                Ok(_) => info!(">> read message"),
-                Err(err) => warn!(">> can't read message: {}", err),
+            match sem::wait(self.s_sig) {
+                Ok(_) => (),
+                Err(err) => {
+                    warn!("res_handler >> can't aquire lock: {}", err);
+                    continue;
+                },
             }
 
+            // TODO: starts a thread that read request, operates on ht and then write
+            match self.read() {
+                Ok(message) => {
+                    info!(">> read message");
+                    // TODO: operate on ht (blocking)
+
+                    // TODO: write message (blocking)
+                },
+                Err(err) => warn!(">> can't read message: {}", err),
+            }
         }
     }
 }

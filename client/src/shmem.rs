@@ -75,6 +75,9 @@ pub fn dequeue(shm_ptr: *mut c_void, sem:*mut sem_t) -> io::Result<Message> {
 
     let message = buffer[front].clone();
 
+    // clear buffer entry
+    buffer[front] = Message::empty();
+
     // writes front value
     shm.res_front = (shm.res_front + 1) % Q_CAPACITY;
 

@@ -112,4 +112,24 @@ impl IPC {
 
         Ok(message)
     }
+
+    pub fn res_handler(&self) {
+        loop {
+            // wait for message on response buffer
+            match sem::wait(self.c_sig) {
+                Ok(_) => (),
+                Err(err) => {
+                    warn!("res_handler >> can't aquire lock: {}", err);
+                    continue;
+                },
+            }
+
+            // TODO: start thread that consume requests
+            match self.read() {
+                Ok(_) => info!(">> read message"),
+                Err(err) => warn!(">> can't read message: {}", err),
+            }
+
+        }
+    }
 }

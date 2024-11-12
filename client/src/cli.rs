@@ -3,7 +3,7 @@ use std::io::{stdin, stdout, Write};
 use log::{info, warn};
 
 use crate::ipc::IPC;
-use utils::message::{Message, MessageType, VALUE_SIZE,serliaize_key, serliaize_value};
+use utils::message::{Message, MessageType, VALUE_SIZE};
 
 pub fn read(ipc: &IPC) {
     loop {
@@ -12,7 +12,7 @@ pub fn read(ipc: &IPC) {
 
         let mut input = String::new();
         stdin().read_line(&mut input).unwrap();
-        
+
         let input: Vec<&str> = input.trim().split_whitespace().collect();
 
         if input.len() < 2 {
@@ -20,12 +20,12 @@ pub fn read(ipc: &IPC) {
             continue;
         }
 
+        // TODO: use threads
         match input[0] {
             "get" => get_handler(ipc, input),
             "insert" => insert_handler(ipc, input),
             "remove" => remove_handler(ipc, input),
-            _ => println!(">> Unknown command!")
-
+            _ => println!(">> Unknown command!"),
         }
     }
 }
@@ -38,7 +38,7 @@ fn get_handler(ipc: &IPC, input: Vec<&str>) {
 
     let message = Message {
         typ: MessageType::Get,
-        key: serliaize_key(input[1]),
+        key: Message::serliaize_key(input[1]),
         value: [0; VALUE_SIZE]
     };
 
@@ -56,8 +56,8 @@ fn insert_handler(ipc: &IPC, input: Vec<&str>) {
 
     let message = Message {
         typ: MessageType::Insert,
-        key: serliaize_key(input[1]),
-        value: [0; VALUE_SIZE]
+        key: Message::serliaize_key(input[1]),
+        value: Message::serliaize_value(input[2]),
     };
 
     match ipc.write(message) {
@@ -74,7 +74,7 @@ fn remove_handler(ipc: &IPC, input: Vec<&str>) {
 
     let message = Message {
         typ: MessageType::Remove,
-        key: serliaize_key(input[1]),
+        key: Message::serliaize_key(input[1]),
         value: [0; VALUE_SIZE]
     };
 

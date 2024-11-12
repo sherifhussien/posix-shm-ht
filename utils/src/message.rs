@@ -5,6 +5,7 @@ pub const VALUE_SIZE: usize = 128;
 #[repr(u16)]
 #[derive(Debug, Clone)]
 pub enum MessageType {
+    Empty = 0,
     Get = 500,
     Insert = 501,
     Remove = 502,
@@ -21,36 +22,46 @@ pub struct Message {
     pub value: [u8; VALUE_SIZE],
 }
 
-pub fn serliaize_key(s: &str) -> [u8; KEY_SIZE] {
-    let mut array = [0u8; KEY_SIZE];
-    let bytes = s.as_bytes();
+impl Message {
+    pub fn empty() -> Self {
+        Message {
+            typ: MessageType::Empty,
+            key: [0; KEY_SIZE],
+            value: [0; VALUE_SIZE]
+        }
+    }
 
-    let len = bytes.len().min(KEY_SIZE);
-    array[..len].copy_from_slice(&bytes[..len]);
+    pub fn serliaize_key(s: &str) -> [u8; KEY_SIZE] {
+        let mut array = [0u8; KEY_SIZE];
+        let bytes = s.as_bytes();
 
-    array
-}
+        let len = bytes.len().min(KEY_SIZE);
+        array[..len].copy_from_slice(&bytes[..len]);
 
-pub fn serliaize_value(s: &str) -> [u8; VALUE_SIZE] {
-    let mut array = [0u8; VALUE_SIZE];
-    let bytes = s.as_bytes();
+        array
+    }
 
-    let len = bytes.len().min(VALUE_SIZE);
-    array[..len].copy_from_slice(&bytes[..len]);
+    pub fn serliaize_value(s: &str) -> [u8; VALUE_SIZE] {
+        let mut array = [0u8; VALUE_SIZE];
+        let bytes = s.as_bytes();
 
-    array
-}
+        let len = bytes.len().min(VALUE_SIZE);
+        array[..len].copy_from_slice(&bytes[..len]);
 
-pub fn deserialize_key(bytes: [u8; KEY_SIZE]) -> String {
-    // trim trailing null characters
-    String::from_utf8(bytes.to_vec())
-        .map(|s| s.trim_end_matches('\0').to_string())
-        .unwrap_or_default()
-}
+        array
+    }
 
-pub fn deserialize_value(bytes: [u8; VALUE_SIZE]) -> String {
-    // trim trailing null characters
-    String::from_utf8(bytes.to_vec())
-        .map(|s| s.trim_end_matches('\0').to_string())
-        .unwrap_or_default()
+    pub fn deserialize_key(bytes: [u8; KEY_SIZE]) -> String {
+        // trim trailing null characters
+        String::from_utf8(bytes.to_vec())
+            .map(|s| s.trim_end_matches('\0').to_string())
+            .unwrap_or_default()
+    }
+
+    pub fn deserialize_value(bytes: [u8; VALUE_SIZE]) -> String {
+        // trim trailing null characters
+        String::from_utf8(bytes.to_vec())
+            .map(|s| s.trim_end_matches('\0').to_string())
+            .unwrap_or_default()
+    }
 }

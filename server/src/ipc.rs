@@ -12,7 +12,7 @@ use log::{info, warn};
 use crate::sem;
 use crate::shmem;
 use crate::hash_table::HashTable;
-use utils::message::Message;
+use utils::message::{Message, deserialize_key, deserialize_value};
 use utils::shared_mem::{SHM_NAME, SHM_SIZE};
 use utils::sem::{REQ_MUTEX_NAME, RES_MUTEX_NAME, S_SIGNAL_NAME, C_SIGNAL_NAME};
 
@@ -131,7 +131,7 @@ impl IPC {
      // writes message to shm
      pub fn write(&self, message: Message) -> io::Result<()> {
         shmem::enqueue(self.shm_ptr, self.res_mutex, self.c_sig, message.clone())?;
-        info!(">> message enqueued code: {}", message.typ);
+        info!(">> message enqueued code: {:?}", message.typ);
 
         Ok(())
     }
@@ -139,7 +139,7 @@ impl IPC {
     // reads message from shm
     pub fn read(&self) -> io::Result<Message> {
         let message = shmem::dequeue(self.shm_ptr, self.req_mutex)?;
-        info!(">> message dequeued code: {}", message.typ);
+        info!(">> message dequeued code: {:?} {} {}", message.typ, deserialize_key(message.key), deserialize_value(message.value));
 
         Ok(message)
     }

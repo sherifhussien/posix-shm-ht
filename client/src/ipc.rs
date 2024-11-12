@@ -85,9 +85,9 @@ impl IPC {
         sem::close(self.res_mutex)?;
         info!(">> closed res_mutex semaphore with descriptor: {:?}", self.res_mutex);
         sem::close(self.s_sig)?;
-        info!(">> closed res_mutex semaphore with descriptor: {:?}", self.s_sig);
+        info!(">> closed s_sig semaphore with descriptor: {:?}", self.s_sig);
         sem::close(self.c_sig)?;
-        info!(">> closed res_mutex semaphore with descriptor: {:?}", self.c_sig);
+        info!(">> closed c_sig semaphore with descriptor: {:?}", self.c_sig);
         
         unsafe {
             munmap(self.shm_ptr, SHM_SIZE)?;
@@ -100,7 +100,7 @@ impl IPC {
     // writes message to shm
     pub fn write(&self, message: Message) -> io::Result<()> {
         shmem::enqueue(self.shm_ptr, self.req_mutex,self.s_sig, message.clone())?;
-        info!(">> message enqueued code : {}", message.typ);
+        info!(">> message enqueued");
 
         Ok(())
     }
@@ -108,7 +108,7 @@ impl IPC {
     // reads message from shm
     pub fn read(&self) -> io::Result<Message> {
         let message = shmem::dequeue(self.shm_ptr, self.res_mutex)?;
-        info!(">> message dequeued code: {}", message.typ);
+        info!(">> message dequeued");
 
         Ok(message)
     }

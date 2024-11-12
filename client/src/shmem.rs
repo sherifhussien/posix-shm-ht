@@ -1,6 +1,5 @@
 use std::io::{self, Error, ErrorKind};
 use std::os::raw::c_void;
-use std::{thread, time};
 
 use log::{info, warn};
 use libc::sem_t;
@@ -18,9 +17,6 @@ pub fn enqueue(shm_ptr: *mut c_void, sem:*mut sem_t, sig:*mut sem_t, message: Me
     sem::wait(sem)?;
 
     /* enters critical region */
-
-    // TODO: remove blocking operation
-    thread::sleep(time::Duration::from_secs(10));
 
     let size = shm.req_size;
     if size == Q_CAPACITY {

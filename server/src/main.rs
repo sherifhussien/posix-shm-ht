@@ -1,10 +1,11 @@
+#![allow(warnings)]
+
 mod args;
 mod hash_table;
 mod ipc;
 mod shmem;
 mod sem;
 
-use log::{info, warn};
 use env_logger::Env;
 
 use ipc::IPC;

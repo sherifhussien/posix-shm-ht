@@ -5,9 +5,12 @@ A hash table that serves requests through a **Posix shm**.
 ## Quick start
 
 ```bash
-cargo build --release
 cargo run -p server -- -n 10
 cargo run -p client
+
+# using make
+make server n=20
+make client
 ```
 
 ## Overview

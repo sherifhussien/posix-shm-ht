@@ -7,6 +7,7 @@ mod shmem;
 mod sem;
 
 use env_logger::Env;
+use log::{info, warn};
 
 use ipc::IPC;
 
@@ -17,15 +18,19 @@ fn main() {
 
     // parse cli args
     let ht_size: usize = args::parse_args();
-
-    let mut ipc: IPC = IPC::new(ht_size);
     
-    match ipc.init() {
-        Ok(_) => info!("IPC >> initialized successfully"),
-        Err(err) => warn!("IPC >> init error: {}", err),
-    }
+    let mut ipc: IPC = match IPC::init(ht_size) {
+        Ok(ipc) => {
+            info!("IPC >> server initialized successfully and ready for requests!");
+            ipc
+        },
+        Err(err) => {
+            warn!("IPC >> init error: {}", err);
+            return;
+        },
+    };
 
-    // loops and waits for requests
+    // waits for requests and loop
     ipc.req_handler();
 
     match ipc.clean() {

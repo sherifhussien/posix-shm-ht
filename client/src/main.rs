@@ -9,25 +9,37 @@ use log::{info, warn};
 use env_logger::Env;
 
 use ipc::IPC;
+use utils::shared_mem::SharedMemory;
+
+use std::thread;
+use std::time::Duration;
 
 fn main() {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
 
     info!("*********************** Started Client ***********************");    
-    
-    let mut ipc: IPC = IPC::new();
-    
-     match ipc.init() {
-        Ok(_) => info!("IPC >> initialized successfully"),
-        Err(err) => warn!("IPC >> init error: {}", err),
-    }
 
-    // TODO: threads
-    // ipc.res_handler();
+    let mut ipc: IPC = match IPC::init() {
+        Ok(ipc) => {
+            info!("IPC >> client initialized successfully!");
+            ipc
+        },
+        Err(err) => {
+            warn!("IPC >> init error: {}", err);
+            return;
+        },
+    };
 
     // TODO: handle logic to either run script or read from cli
-    // loops and reads messages from cli
-    cli::read(&ipc);
+    // reads message from cli and loop
+    let shm: &mut SharedMemory = unsafe { &mut *ipc.shm_ptr };
+    let res_mutex: &mut i32 = unsafe { &mut *ipc.res_mutex }; 
+    let s_sig: &mut i32 = unsafe { &mut *ipc.s_sig };
+    thread::spawn(|| {
+        cli::read(shm, res_mutex, s_sig);
+    });
+
+    ipc.res_handler();
   
     match ipc.clean() {
         Ok(_) => info!("IPC >> cleaned successfully"),

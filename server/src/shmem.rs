@@ -9,19 +9,16 @@ use utils::shared_mem::{SharedMemory, Q_CAPACITY};
 use utils::sem;
 
 /// enqueue to response buffer
-pub fn enqueue(shm_ptr: *mut c_void, sem:*mut sem_t, sig:*mut sem_t, message: Message) -> io::Result<()> {
-    // raw pointer
-    let shm_ptr = shm_ptr as *mut SharedMemory;
-    let shm: &mut SharedMemory = unsafe{ &mut *shm_ptr };
+pub fn enqueue(shm: &mut SharedMemory, mutex: *mut sem_t, sig: *mut sem_t, message: Message) -> io::Result<()> {
 
-    sem::wait(sem)?;
+    sem::wait(mutex)?;
 
     /* enters critical region */
     
     let size = shm.res_size;
     if size == Q_CAPACITY {
         // release lock 
-        sem::post(sem)?;
+        sem::post(mutex)?;
         return Err(Error::new(ErrorKind::OutOfMemory, "enqueue >> response buffer is full"));
     }
 
@@ -42,7 +39,7 @@ pub fn enqueue(shm_ptr: *mut c_void, sem:*mut sem_t, sig:*mut sem_t, message: Me
 
     /* leaves critical region */
 
-    sem::post(sem)?;
+    sem::post(mutex)?;
 
     //signal client that response was enqueued
     sem::post(sig)?;
@@ -52,18 +49,16 @@ pub fn enqueue(shm_ptr: *mut c_void, sem:*mut sem_t, sig:*mut sem_t, message: Me
 }
 
 /// dequeue from requests buffer
-pub fn dequeue(shm_ptr: *mut c_void, sem:*mut sem_t) -> io::Result<Message> {
-    let shm_ptr = shm_ptr as *mut SharedMemory;
-    let shm: &mut SharedMemory = unsafe { &mut *shm_ptr };
+pub fn dequeue(shm: &mut SharedMemory, mutex: *mut sem_t) -> io::Result<Message> {
 
-    sem::wait(sem)?;
+    sem::wait(mutex)?;
 
     /* enters critical region */
 
     let size = shm.req_size;
     if size == 0 {
         // release lock 
-        sem::post(sem)?;
+        sem::post(mutex)?;
         return Err(Error::new(ErrorKind::NotFound, "dequeue >> requests buffer is empty"));
     }
 
@@ -86,7 +81,7 @@ pub fn dequeue(shm_ptr: *mut c_void, sem:*mut sem_t) -> io::Result<Message> {
 
     /* leaves critical region */
 
-    sem::post(sem)?;
+    sem::post(mutex)?;
 
     Ok(message)
 }

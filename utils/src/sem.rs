@@ -3,8 +3,9 @@ use std::ffi::CString;
 use std::os::raw::c_uint;
 
 use log::{info, warn};
+use errno::errno;
 use libc::{
-    sem_t, sem_open, sem_close, sem_wait, sem_post, sem_unlink, __error, 
+    sem_t, sem_open, sem_close, sem_wait, sem_post, sem_unlink,
     O_CREAT, O_EXCL, S_IROTH, S_IWOTH, S_IRUSR, S_IWUSR,
     SEM_FAILED, EEXIST, EACCES, EINVAL, ENAMETOOLONG, ENOENT, ENOMEM,
 }; 
@@ -42,7 +43,7 @@ pub fn open(sem_name: &str, access_type: AccessType, initial_value: isize) -> io
     };
 
     if sem == SEM_FAILED {
-        let errno: i32 = unsafe { *__error() };
+        let errno: i32 = errno().0;
         return match errno {
             EACCES => Err(Error::new(ErrorKind::PermissionDenied, "sem_open >> permission denied")),
             EINVAL => Err(Error::new(ErrorKind::InvalidInput, "sem_open >> invalid argument")),
@@ -60,9 +61,9 @@ pub fn open(sem_name: &str, access_type: AccessType, initial_value: isize) -> io
 // wait on a sem object
 pub fn wait(sem: *mut sem_t) -> io::Result<()> {
     // TODO: handle sem_wait failure
-    info!(">> trying to aquire lock");
+    // info!(">> trying to aquire lock");
     let aquired = unsafe { sem_wait(sem) == 0 };
-    info!(">> aquired lock: {aquired}");
+    // info!(">> aquired lock: {aquired}");
 
     Ok(())
 }
@@ -70,9 +71,9 @@ pub fn wait(sem: *mut sem_t) -> io::Result<()> {
 // post on a sem object
 pub fn post(sem: *mut sem_t) -> io::Result<()> {
     // TODO: handle sem_post failure
-    info!(">> releasing lock");
+    // info!(">> releasing lock");
     let released = unsafe {sem_post(sem) == 0};
-    info!(">> lock released: {released}");
+    // info!(">> lock released: {released}");
 
     Ok(())
 }
@@ -80,13 +81,13 @@ pub fn post(sem: *mut sem_t) -> io::Result<()> {
 // close a sem object
 pub fn close(sem: *mut sem_t) -> io::Result<()> {
   unsafe {
-      if sem_close(sem) == -1 {
-          let errno: i32 = *__error();
-          return match errno {
-              EINVAL => Err(Error::new(ErrorKind::InvalidInput, "sem_close >> sem is not a valid semaphore")),
-              _ => Err(Error::new(ErrorKind::Other, format!("sem_close >> an unknown error occurred: errno = {}", errno))),
-          }
-      }
+    if sem_close(sem) == -1 {
+        let errno: i32 = errno().0;
+        return match errno {
+            EINVAL => Err(Error::new(ErrorKind::InvalidInput, "sem_close >> sem is not a valid semaphore")),
+            _ => Err(Error::new(ErrorKind::Other, format!("sem_close >> an unknown error occurred: errno = {}", errno))),
+        }
+    }
   }
 
   Ok(())
@@ -98,7 +99,7 @@ pub fn destroy(name: &str)  -> io::Result<()> {
 
     unsafe {
         if sem_unlink(sem_name.as_ptr()) == -1 {
-            let errno: i32 = *__error();
+            let errno: i32 = errno().0;
             return match errno {
                 EACCES => Err(Error::new(ErrorKind::PermissionDenied, "sem_unlink >> permission denied")),
                 ENAMETOOLONG => Err(Error::new(ErrorKind::InvalidInput, "sem_unlink >> name too long")),

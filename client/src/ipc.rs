@@ -1,6 +1,8 @@
 use std::io;
 use std::os::raw::c_void;
 use std::ptr::null_mut;
+use std::thread;
+use std::sync::{Arc, Mutex};
 
 use libc::sem_t;
 use rustix::shm;
@@ -11,30 +13,20 @@ use log::{info, warn};
 use crate::sem;
 use crate::shmem;
 use utils::message::Message;
-use utils::shared_mem::{ SHM_NAME, SHM_SIZE};
+use utils::shared_mem::{ SharedMemory, SHM_NAME, SHM_SIZE};
 use utils::sem::{REQ_MUTEX_NAME, RES_MUTEX_NAME, S_SIGNAL_NAME, C_SIGNAL_NAME};
 
 pub struct IPC {
-    shm_ptr: *mut c_void,
-    req_mutex: *mut sem_t, // controls access to critical region
-    res_mutex: *mut sem_t, // controls access to critical region
-    s_sig: *mut sem_t, // control signals to server
-    c_sig: *mut sem_t, // control signals to client
+    pub shm_ptr: *mut SharedMemory,
+    pub req_mutex: *mut sem_t, // controls access to critical region
+    pub res_mutex: *mut sem_t, // controls access to critical region
+    pub s_sig: *mut sem_t, // control signals to server
+    pub c_sig: *mut sem_t, // control signals to client
 }
 
 impl IPC {
 
-    pub fn new() -> Self {
-        IPC {
-            shm_ptr: null_mut(),
-            req_mutex: null_mut(),
-            res_mutex: null_mut(),
-            s_sig: null_mut(),
-            c_sig: null_mut(),
-        }
-    }
-    
-    pub fn init(&mut self) -> io::Result<()> {
+    pub fn init() -> io::Result<Self> {
         // open the sem objects
         let req_mutex: *mut sem_t = sem::open(REQ_MUTEX_NAME)?;
         info!(">> opened req_mutex semaphore with descriptor: {:?}", req_mutex);
@@ -69,13 +61,13 @@ impl IPC {
         };
         info!(">> mapped shm");
 
-        self.shm_ptr = shm_ptr;
-        self.req_mutex = req_mutex;
-        self.res_mutex = res_mutex;
-        self.s_sig = s_sig;
-        self.c_sig = c_sig;
-
-        Ok(())
+        Ok(IPC {
+            shm_ptr: shm_ptr as *mut SharedMemory,
+            req_mutex: req_mutex,
+            res_mutex: res_mutex,
+            s_sig,
+            c_sig,
+        })
     }
 
     /// unmap the shm object
@@ -90,27 +82,11 @@ impl IPC {
         info!(">> closed c_sig semaphore with descriptor: {:?}", self.c_sig);
         
         unsafe {
-            munmap(self.shm_ptr, SHM_SIZE)?;
+            munmap(self.shm_ptr as *mut c_void, SHM_SIZE)?;
             info!(">> unmapped shm");
         }
 
         Ok(())
-    }
-
-    // writes message to shm
-    pub fn write(&self, message: Message) -> io::Result<()> {
-        shmem::enqueue(self.shm_ptr, self.req_mutex,self.s_sig, message.clone())?;
-        info!(">> message enqueued");
-
-        Ok(())
-    }
-
-    // reads message from shm
-    pub fn read(&self) -> io::Result<Message> {
-        let message = shmem::dequeue(self.shm_ptr, self.res_mutex)?;
-        info!(">> message dequeued");
-
-        Ok(message)
     }
 
     pub fn res_handler(&self) {
@@ -123,13 +99,29 @@ impl IPC {
                     continue;
                 },
             }
-
-            // TODO: start thread that consume requests
-            match self.read() {
-                Ok(_) => info!(">> read message"),
-                Err(err) => warn!(">> can't read message: {}", err),
-            }
-
+            
+            let shm: &mut SharedMemory = unsafe { &mut *self.shm_ptr };
+            let res_mutex: &mut i32 = unsafe { &mut *self.res_mutex }; 
+            
+            // start thread that consume the request
+            thread::spawn(|| {
+                match IPC::read(shm, res_mutex) {
+                    Ok(message) => info!("res_handler >> read message: {:?}", message),
+                    Err(err) => warn!("res_handler >> error reading message: {}", err),
+                }
+            });
         }
+    }
+
+    // writes message to shm
+    pub fn write(shm: &mut SharedMemory, req_mutex: *mut sem_t, s_sig: *mut sem_t, message: Message) -> io::Result<()> {
+        shmem::enqueue(shm, req_mutex, s_sig, message.clone())?;
+        Ok(())
+    }
+
+    // reads message from shm
+    pub fn read(shm: &mut SharedMemory, res_mutex: *mut sem_t) -> io::Result<Message> {
+        let message = shmem::dequeue(shm, res_mutex)?;
+        Ok(message)
     }
 }

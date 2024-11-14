@@ -1,6 +1,7 @@
 use std::io;
 use std::os::raw::c_void;
 use std::ptr::null_mut;
+use std::thread;
 
 use libc::sem_t;
 use rustix::shm;
@@ -13,11 +14,11 @@ use crate::sem;
 use crate::shmem;
 use crate::hash_table::HashTable;
 use utils::message::Message;
-use utils::shared_mem::{SHM_NAME, SHM_SIZE};
+use utils::shared_mem::{SharedMemory, SHM_NAME, SHM_SIZE};
 use utils::sem::{REQ_MUTEX_NAME, RES_MUTEX_NAME, S_SIGNAL_NAME, C_SIGNAL_NAME};
 
 pub struct IPC {
-    shm_ptr: *mut c_void,
+    shm_ptr: *mut SharedMemory,
     req_mutex: *mut sem_t, // controls access to critical region
     res_mutex: *mut sem_t, // controls access to critical region
     s_sig: *mut sem_t, // control signals to server
@@ -27,18 +28,7 @@ pub struct IPC {
 
 impl IPC {
 
-    pub fn new(ht_size: usize) -> Self {
-        IPC {
-            shm_ptr: null_mut(), // segmentation error on null pointers
-            req_mutex: null_mut(),
-            res_mutex: null_mut(),
-            s_sig: null_mut(),
-            c_sig: null_mut(),
-            ht: HashTable::new(ht_size as usize),
-        }
-    }
-    
-    pub fn init(&mut self) -> io::Result<()> {
+    pub fn init(ht_size: usize) -> io::Result<Self> {
 
         // TODO: Use SIGINT instead
         // workaround remove if they already exist
@@ -87,13 +77,14 @@ impl IPC {
         };
         info!(">> mapped shm");
 
-        self.shm_ptr = shm_ptr;
-        self.req_mutex = req_mutex;
-        self.res_mutex = res_mutex;
-        self.s_sig = s_sig;
-        self.c_sig = c_sig;
-
-        Ok(())
+        Ok(IPC {
+            shm_ptr: shm_ptr as *mut SharedMemory,
+            req_mutex,
+            res_mutex,
+            s_sig,
+            c_sig,
+            ht: HashTable::new(ht_size as usize),
+        })
     }
 
     /// unmap and remove the shm object
@@ -118,7 +109,7 @@ impl IPC {
         info!(">> removed res_mutex semaphore with name: {}", C_SIGNAL_NAME);
         
         unsafe {
-            munmap(self.shm_ptr, SHM_SIZE)?;
+            munmap(self.shm_ptr as *mut c_void, SHM_SIZE)?;
             info!(">> unmapped shm");
         }
 
@@ -128,43 +119,51 @@ impl IPC {
         Ok(())
     }
 
-     // writes message to shm
-     pub fn write(&self, message: Message) -> io::Result<()> {
-        shmem::enqueue(self.shm_ptr, self.res_mutex, self.c_sig, message.clone())?;
-        info!(">> message enqueued code: {:?}", message.typ);
-
-        Ok(())
-    }
-
-    // reads message from shm
-    pub fn read(&self) -> io::Result<Message> {
-        let message = shmem::dequeue(self.shm_ptr, self.req_mutex)?;
-        info!(">> message dequeued code: {:?} {} {}", message.typ, Message::deserialize_key(message.key), Message::deserialize_value(message.value));
-
-        Ok(message)
-    }
-
     pub fn req_handler(&self) {
         loop {
             // wait for message on request buffer
             match sem::wait(self.s_sig) {
                 Ok(_) => (),
                 Err(err) => {
-                    warn!("res_handler >> can't aquire lock: {}", err);
+                    warn!("req_handler >> can't aquire lock: {}", err);
                     continue;
                 },
             }
 
-            // TODO: starts a thread that read request, operates on ht and then write
-            match self.read() {
-                Ok(message) => {
-                    info!(">> read message");
-                    // TODO: operate on ht (blocking)
+            let shm: &mut SharedMemory = unsafe { &mut *self.shm_ptr };
+            let req_mutex: &mut i32 = unsafe { &mut *self.req_mutex };
+            let res_mutex: &mut i32 = unsafe { &mut *self.res_mutex };
+            let c_sig: &mut i32 = unsafe { &mut *self.c_sig };
 
-                    // TODO: write message (blocking)
-                },
-                Err(err) => warn!(">> can't read message: {}", err),
-            }
+            // TODO: starts a thread that read request, operates on ht and then write
+            thread::spawn(|| {
+                match IPC::read(shm, req_mutex) {
+                    Ok(message) => {
+                        info!("req_handler >> read message: {:?}", message);
+
+                        // TODO: operate on ht (blocking)
+    
+                        // write message (blocking)
+                        match IPC::write(shm, res_mutex, c_sig, message) {
+                            Ok(_) => info!("req_handler >> wrote message"),
+                            Err(err) => warn!("req_handler >> error writing message: {}", err)
+                        };
+                    },
+                    Err(err) => warn!("req_handler >> error reading message: {}", err),
+                }
+            });
         }
+    }
+
+    // writes message to shm
+    pub fn write(shm: &mut SharedMemory, res_mutex: *mut sem_t, c_sig: *mut sem_t, message: Message) -> io::Result<()> {
+        shmem::enqueue(shm, res_mutex, c_sig, message.clone())?;
+        Ok(())
+    }
+
+    // reads message from shm
+    pub fn read(shm: &mut SharedMemory, req_mutex: *mut sem_t) -> io::Result<Message> {
+        let message = shmem::dequeue(shm, req_mutex)?;
+        Ok(message)
     }
 }

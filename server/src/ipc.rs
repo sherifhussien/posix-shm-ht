@@ -2,6 +2,7 @@ use std::io;
 use std::os::raw::c_void;
 use std::ptr::null_mut;
 use std::thread;
+use std::sync::{Arc, Mutex};
 
 use libc::sem_t;
 use rustix::shm;
@@ -13,7 +14,7 @@ use log::{info, warn};
 use crate::sem;
 use crate::shmem;
 use crate::hash_table::HashTable;
-use utils::message::Message;
+use utils::message::{Message, MessageType, KEY_SIZE, VALUE_SIZE};
 use utils::shared_mem::{SharedMemory, SHM_NAME, SHM_SIZE};
 use utils::sem::{REQ_MUTEX_NAME, RES_MUTEX_NAME, S_SIGNAL_NAME, C_SIGNAL_NAME};
 
@@ -23,7 +24,7 @@ pub struct IPC {
     res_mutex: *mut sem_t, // controls access to critical region
     s_sig: *mut sem_t, // control signals to server
     c_sig: *mut sem_t, // control signals to client
-    ht: HashTable<String, String>,
+    ht: Arc<Mutex<HashTable<String, String>>>,
 }
 
 impl IPC {
@@ -83,7 +84,7 @@ impl IPC {
             res_mutex,
             s_sig,
             c_sig,
-            ht: HashTable::new(ht_size as usize),
+            ht: Arc::new(Mutex::new(HashTable::new(ht_size as usize))),
         })
     }
 
@@ -134,17 +135,71 @@ impl IPC {
             let req_mutex: &mut i32 = unsafe { &mut *self.req_mutex };
             let res_mutex: &mut i32 = unsafe { &mut *self.res_mutex };
             let c_sig: &mut i32 = unsafe { &mut *self.c_sig };
+            let ht= Arc::clone(&self.ht);
 
             // TODO: starts a thread that read request, operates on ht and then write
-            thread::spawn(|| {
+            thread::spawn(move || {
                 match IPC::read(shm, req_mutex) {
                     Ok(message) => {
-                        info!("req_handler >> read message: {:?}", message);
+                        info!("req_handler >> read message: {:?} {:?} {:?}", message.typ, Message::deserialize_key(message.key), Message::deserialize_value(message.value));
 
                         // TODO: operate on ht (blocking)
+                        let m = match message.typ {
+                            MessageType::Get => {
+                                let k = Message::deserialize_key(message.key);
+
+                                match ht.lock().unwrap().get(&k) {
+                                    Some(value) => Message {
+                                        typ: MessageType::GetSuccess,
+                                        key: message.key,
+                                        value: Message::serliaize_value(&value.clone()),
+                                    },
+                                    None => Message {
+                                        typ: MessageType::GetNotFound,
+                                        key: [0; KEY_SIZE],
+                                        value: [0; VALUE_SIZE],
+                                    },
+                                }
+                            },
+                            MessageType::Insert => {
+                                let k = Message::deserialize_key(message.key);
+                                let v = Message::deserialize_value(message.value);
+
+                                match ht.lock().unwrap().insert(k, v) {
+                                    Some(v) => Message {
+                                        typ: MessageType::InsertSuccess,
+                                        key: message.key,
+                                        value: Message::serliaize_value(&v),
+                                    },
+                                    None => Message {
+                                        typ: MessageType::InsertSuccess,
+                                        key: [0; KEY_SIZE],
+                                        value: [0; VALUE_SIZE],
+                                    },
+                                }
+                            },
+                            MessageType::Remove => {
+                                let k = Message::deserialize_key(message.key);
+
+                                match ht.lock().unwrap().remove(&k) {
+                                    Some(v) => Message {
+                                        typ: MessageType::RemoveSuccess,
+                                        key: message.key,
+                                        value: Message::serliaize_value(&v),
+                                    },
+                                    None => Message {
+                                        typ: MessageType::RemoveNotFound,
+                                        key: [0; KEY_SIZE],
+                                        value: [0; VALUE_SIZE],
+                                    },
+                                }
+                            },
+                            _ => Message::empty()
+                        };
+
     
                         // write message (blocking)
-                        match IPC::write(shm, res_mutex, c_sig, message) {
+                        match IPC::write(shm, res_mutex, c_sig, m) {
                             Ok(_) => info!("req_handler >> wrote message"),
                             Err(err) => warn!("req_handler >> error writing message: {}", err)
                         };

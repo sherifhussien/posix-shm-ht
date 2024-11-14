@@ -1,6 +1,6 @@
 // message types
 pub const KEY_SIZE: usize = 16;
-pub const VALUE_SIZE: usize = 128;
+pub const VALUE_SIZE: usize = 64;
 
 #[repr(u16)]
 #[derive(Debug, Clone)]
@@ -9,9 +9,11 @@ pub enum MessageType {
     Get = 500,
     Insert = 501,
     Remove = 502,
-    GetResponse = 600,
-    InsertResponse = 601,
-    RemoveResponse = 602,
+    GetSuccess = 600,
+    GetNotFound = 601,
+    InsertSuccess = 602,
+    RemoveSuccess = 603,
+    RemoveNotFound = 604,
 }
 
 #[repr(C)] // makes struct compatible with C's layout convention

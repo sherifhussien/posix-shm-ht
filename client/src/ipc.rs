@@ -106,7 +106,7 @@ impl IPC {
             // start thread that consume the request
             thread::spawn(|| {
                 match IPC::read(shm, res_mutex) {
-                    Ok(message) => info!("res_handler >> read message: {:?}", message),
+                    Ok(message) => info!("res_handler >> read message: {:?} {:?} {:?}", message.typ, Message::deserialize_key(message.key), Message::deserialize_value(message.value)),
                     Err(err) => warn!("res_handler >> error reading message: {}", err),
                 }
             });

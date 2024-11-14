@@ -27,6 +27,9 @@ pub struct IPC {
     ht: Arc<Mutex<HashTable<String, String>>>,
 }
 
+unsafe impl Send for IPC  {}
+
+
 impl IPC {
 
     pub fn init(ht_size: usize) -> io::Result<Self> {
@@ -132,9 +135,9 @@ impl IPC {
             }
 
             let shm: &mut SharedMemory = unsafe { &mut *self.shm_ptr };
-            let req_mutex: &mut i32 = unsafe { &mut *self.req_mutex };
-            let res_mutex: &mut i32 = unsafe { &mut *self.res_mutex };
-            let c_sig: &mut i32 = unsafe { &mut *self.c_sig };
+            let req_mutex: &mut sem_t = unsafe { &mut *self.req_mutex };
+            let res_mutex: &mut sem_t = unsafe { &mut *self.res_mutex };
+            let c_sig: &mut sem_t = unsafe { &mut *self.c_sig };
             let ht= Arc::clone(&self.ht);
 
             // TODO: starts a thread that read request, operates on ht and then write

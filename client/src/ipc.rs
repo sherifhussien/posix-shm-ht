@@ -101,7 +101,7 @@ impl IPC {
             }
             
             let shm: &mut SharedMemory = unsafe { &mut *self.shm_ptr };
-            let res_mutex: &mut i32 = unsafe { &mut *self.res_mutex }; 
+            let res_mutex: &mut sem_t = unsafe { &mut *self.res_mutex }; 
             
             // start thread that consume the request
             thread::spawn(|| {

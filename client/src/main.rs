@@ -5,6 +5,7 @@ mod shmem;
 mod sem;
 mod cli;
 
+use libc::sem_t;
 use log::{info, warn};
 use env_logger::Env;
 
@@ -33,8 +34,8 @@ fn main() {
     // TODO: handle logic to either run script or read from cli
     // reads message from cli and loop
     let shm: &mut SharedMemory = unsafe { &mut *ipc.shm_ptr };
-    let res_mutex: &mut i32 = unsafe { &mut *ipc.res_mutex }; 
-    let s_sig: &mut i32 = unsafe { &mut *ipc.s_sig };
+    let res_mutex: &mut sem_t = unsafe { &mut *ipc.res_mutex }; 
+    let s_sig: &mut sem_t = unsafe { &mut *ipc.s_sig };
     thread::spawn(|| {
         cli::read(shm, res_mutex, s_sig);
     });

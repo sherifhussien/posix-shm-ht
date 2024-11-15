@@ -43,7 +43,7 @@ pub fn enqueue(shm: &mut SharedMemory, mutex: *mut sem_t, sig: *mut sem_t, messa
 
     //signal client that response was enqueued
     sem::post(sig)?;
-    info!(">> signal sent to client");
+    // info!(">> signal sent to client");
 
     Ok(())
 }

@@ -1,5 +1,4 @@
 use std::io::{self, Error, ErrorKind};
-// use std::os::raw::c_void;
 
 use log::{info, warn};
 use libc::sem_t;
@@ -43,7 +42,7 @@ pub fn enqueue(shm: &mut SharedMemory, mutex: *mut sem_t, sig: *mut sem_t, messa
 
     //signal server that request was enqueued
     sem::post(sig)?;
-    info!(">> signal sent to server");
+    // info!(">> signal sent to server");
 
     Ok(())
 }

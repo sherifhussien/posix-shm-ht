@@ -1,4 +1,5 @@
 n ?= 50
+test ?= false
 
 build:
 	cargo build --release
@@ -10,4 +11,8 @@ server: build
 	./target/release/server -n $(n)
 
 client: build
-	./target/release/client
+	@if [ "$(test)" = "true" ]; then \
+		./target/release/client --test; \
+	else \
+		./target/release/client; \
+	fi

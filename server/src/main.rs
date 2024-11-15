@@ -18,12 +18,12 @@ use ipc::IPC;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+    
+    // parse cli args
+    let ht_size: usize = args::parse_args();
 
     info!("*********************** Started Server ***********************");
 
-    // parse cli args
-    let ht_size: usize = args::parse_args();
-    
     let mut ipc = match IPC::init(ht_size) {
         Ok(ipc) => {
             info!("IPC >> server initialized successfully and ready for requests!");

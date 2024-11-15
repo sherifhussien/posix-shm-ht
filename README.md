@@ -10,7 +10,7 @@ cargo run -p client
 
 # using make
 make server n=20
-make client
+make client test=true
 ```
 
 ## Overview

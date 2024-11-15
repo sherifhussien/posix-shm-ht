@@ -1,62 +1,66 @@
 #![allow(warnings)]
-
 mod args;
 mod ipc;
 mod shmem;
 mod sem;
-mod cli;
-mod produce;
+mod gen;
+mod handler;
 
-use libc::sem_t;
+use std::{sync::Arc, thread};
+
 use log::{info, warn};
 use env_logger::Env;
+use tokio::signal;
 
-// use produce;
 use ipc::IPC;
-use utils::shared_mem::SharedMemory;
 
-use std::thread;
-use std::time::Duration;
-
-fn main() {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
-
-    let test_mode: bool = args::parse_args();
-    info!(">> test mode:{}", test_mode);
 
     info!("*********************** Started Client ***********************");    
 
-    let mut ipc: IPC = match IPC::init() {
+    let test_mode: bool = args::parse_args();
+    info!(">> is test mode: {}", test_mode);
+
+    let ipc: Arc<IPC>  = match IPC::init() {
         Ok(ipc) => {
-            info!("IPC >> client initialized successfully!");
-            ipc
+            info!("IPC >> initialized successfully!");
+            Arc::new(ipc)
         },
         Err(err) => {
             warn!("IPC >> init error: {}", err);
-            return;
+            return Ok(())
         },
     };
 
-    // reads message from cli and loop
-    let shm: &mut SharedMemory = unsafe { &mut *ipc.shm_ptr };
-    let res_mutex: &mut sem_t = unsafe { &mut *ipc.res_mutex }; 
-    let s_sig: &mut sem_t = unsafe { &mut *ipc.s_sig };
+    let ipc_clone_1 = Arc::clone(&ipc);
     if test_mode {
-        thread::spawn(|| {
-            produce::produce_message(shm, res_mutex, s_sig);
+        thread::spawn(move || {
+            let inner_clone = Arc::clone(&ipc_clone_1);
+            gen::generate_messages(inner_clone);
         });
-    } else {
-        thread::spawn(|| {
-            cli::read(shm, res_mutex, s_sig);
-        });
-
     }
 
-    
-    ipc.res_handler();
-  
+    let ipc_clone_2 = Arc::clone(&ipc);
+    thread::spawn(move || loop {
+        let inner_clone = Arc::clone(&ipc_clone_2);
+        handler::input_handler(inner_clone);
+    });
+
+    let ipc_clone_3 = Arc::clone(&ipc);
+    thread::spawn(move || loop {
+        let inner_clone = Arc::clone(&ipc_clone_3);
+        handler::response_handler(inner_clone);
+    });
+
+    signal::ctrl_c().await?;
+    println!("ctrl-c received!");
+
     match ipc.clean() {
         Ok(_) => info!("IPC >> cleaned successfully"),
         Err(err) => warn!("IPC >> clean error: {}", err),
-    }
+    };
+    
+    Ok(())
 }

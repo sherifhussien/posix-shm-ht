@@ -1,11 +1,10 @@
 use std::io::{self, Error, ErrorKind};
 
-use log::{info, warn};
 use libc::sem_t;
 
+use crate::sem;
 use utils::message::Message;
 use utils::shared_mem::{SharedMemory, Q_CAPACITY};
-use utils::sem;
 
 /// enqueue to requests buffer
 pub fn enqueue(shm: &mut SharedMemory, mutex: *mut sem_t, sig: *mut sem_t, message: Message) -> io::Result<()> {

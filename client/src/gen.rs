@@ -1,22 +1,26 @@
+use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
 use rand::Rng;
-use libc::sem_t;
-use log::{info, warn};
+use log::info;
 
 use crate::ipc::IPC;
+use crate::handler;
 use utils::message::{Message, MessageType, VALUE_SIZE};
-use utils::shared_mem::SharedMemory;
 
-pub fn produce_message(shm: &mut SharedMemory, req_mutex: *mut sem_t, s_sig: *mut sem_t) {
+const N: i32 = 1000000;
+
+// writes random messages
+pub fn generate_messages(ipc: Arc<IPC>) {
     let base_key = "key";
     let base_value = "value";
     let msg_types: [MessageType; 3] = [MessageType::Get, MessageType::Insert, MessageType::Remove];
 
     let start = Instant::now();
     
-    for i in 1..500000 {
+    for _ in 1..N {
+        let ipc_clone = Arc::clone(&ipc);
 
         let random_type = rand::thread_rng().gen_range(0..=2);
         let random_key_index = rand::thread_rng().gen_range(1..=50);
@@ -48,10 +52,10 @@ pub fn produce_message(shm: &mut SharedMemory, req_mutex: *mut sem_t, s_sig: *mu
             }
         };
 
-        IPC::write(shm, req_mutex, s_sig, message);
+        handler::write(ipc_clone, message);
     }
 
     let duration = start.elapsed();
     thread::sleep(Duration::from_secs(2));
-    info!(">> Time taken: {:?}", duration);
+    info!(">> Time taken for {} messages: {:?}", N, duration);
 }

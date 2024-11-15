@@ -2,7 +2,6 @@ use std::io::{self, Error, ErrorKind};
 use std::ffi::CString;
 use std::os::raw::c_uint;
 
-use log::{info, warn};
 use errno::errno;
 use libc::{
     sem_t, sem_open, sem_close, sem_wait, sem_post, sem_unlink,
@@ -62,7 +61,7 @@ pub fn open(sem_name: &str, access_type: AccessType, initial_value: isize) -> io
 pub fn wait(sem: *mut sem_t) -> io::Result<()> {
     // TODO: handle sem_wait failure
     // info!(">> trying to aquire lock");
-    let aquired = unsafe { sem_wait(sem) == 0 };
+    let _aquired = unsafe { sem_wait(sem) == 0 };
     // info!(">> aquired lock: {aquired}");
 
     Ok(())
@@ -72,7 +71,7 @@ pub fn wait(sem: *mut sem_t) -> io::Result<()> {
 pub fn post(sem: *mut sem_t) -> io::Result<()> {
     // TODO: handle sem_post failure
     // info!(">> releasing lock");
-    let released = unsafe {sem_post(sem) == 0};
+    let _released = unsafe {sem_post(sem) == 0};
     // info!(">> lock released: {released}");
 
     Ok(())

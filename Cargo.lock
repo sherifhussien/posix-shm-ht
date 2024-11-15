@@ -157,6 +157,7 @@ dependencies = [
  "log",
  "rand",
  "rustix",
+ "tokio",
  "utils",
 ]
 

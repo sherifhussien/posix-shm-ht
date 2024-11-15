@@ -10,5 +10,6 @@ libc = "0.2.162"
 log = "0.4.22"
 rand = "0.8.5"
 rustix = { version = "0.38.39", features = ["fs", "shm", "mm"] }
+tokio = { version = "1.41.1", features = ["full", "signal"] }
 
 utils = { path = "../utils" }

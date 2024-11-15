@@ -1,17 +1,16 @@
 #![allow(warnings)]
-
 mod args;
 mod hash_table;
 mod ipc;
 mod shmem;
 mod sem;
+mod handler;
 
-use std::thread;
-use std::sync::{Arc, Mutex};
+use std::{sync::Arc, thread};
 
-use tokio::signal;
-use env_logger::Env;
 use log::{info, warn};
+use env_logger::Env;
+use tokio::signal;
 
 use ipc::IPC;
 
@@ -19,40 +18,36 @@ use ipc::IPC;
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
     
+    info!("*********************** Started Server ***********************");
+
     // parse cli args
     let ht_size: usize = args::parse_args();
 
-    info!("*********************** Started Server ***********************");
-
-    let mut ipc = match IPC::init(ht_size) {
+    let ipc: Arc<IPC> = match IPC::init(ht_size) {
         Ok(ipc) => {
             info!("IPC >> server initialized successfully and ready for requests!");
-            Arc::new(Mutex::new(ipc))
+            Arc::new(ipc)
         },
         Err(err) => {
             warn!("IPC >> init error: {}", err);
-            let my_error = std::io::Error::new(std::io::ErrorKind::Other, "custom error");
-            return Err(Box::new(my_error) as Box<dyn std::error::Error>)
+            return Ok(())
         },
     };
 
-    // waits for requests and loop
-    
-    let ipc_clone_1 = Arc::clone(&ipc);
-    thread::spawn(move || {
-        ipc_clone_1.lock().unwrap().req_handler();
+    // waits for requests and loop    
+    let ipc_clone = Arc::clone(&ipc);
+    thread::spawn(move || loop {
+        let inner_clone = Arc::clone(&ipc_clone);
+        handler::request_handler(inner_clone);
     });
 
-    let ipc_clone_2 = Arc::clone(&ipc);
-    thread::spawn(move || {
+    signal::ctrl_c().await?;
+    println!("ctrl-c received!");
 
-        match ipc_clone_2.lock().unwrap().clean() {
-            Ok(_) => info!("IPC >> cleaned successfully"),
-            Err(err) => warn!("IPC >> clean error: {}", err),
-        }
-    });
-
-    loop {}
+    match ipc.clean() {
+        Ok(_) => info!("IPC >> cleaned successfully"),
+        Err(err) => warn!("IPC >> clean error: {}", err),
+    };
 
     Ok(())
     

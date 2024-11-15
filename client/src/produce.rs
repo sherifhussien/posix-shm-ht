@@ -16,7 +16,7 @@ pub fn produce_message(shm: &mut SharedMemory, req_mutex: *mut sem_t, s_sig: *mu
 
     let start = Instant::now();
     
-    for i in 1..100000 {
+    for i in 1..500000 {
 
         let random_type = rand::thread_rng().gen_range(0..=2);
         let random_key_index = rand::thread_rng().gen_range(1..=50);
@@ -48,10 +48,7 @@ pub fn produce_message(shm: &mut SharedMemory, req_mutex: *mut sem_t, s_sig: *mu
             }
         };
 
-        match IPC::write(shm, req_mutex, s_sig, message) {
-            Ok(_) => info!("get_handler >> wrote message"),
-            Err(err) => warn!("get_handler >> error writing message: {}", err),
-        }
+        IPC::write(shm, req_mutex, s_sig, message);
     }
 
     let duration = start.elapsed();

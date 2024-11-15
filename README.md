@@ -10,8 +10,19 @@ cargo run -p client
 
 # using make
 make server n=20
+
 make client test=true
+[or]
+make client
 ```
+
+### Usage
+
+type the following command in the client terminal
+
+- get [key]
+- insert [key] [value]
+- remove [key]
 
 ## Overview
 

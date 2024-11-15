@@ -202,10 +202,7 @@ impl IPC {
 
     
                         // write message (blocking)
-                        match IPC::write(shm, res_mutex, c_sig, m) {
-                            Ok(_) => info!("req_handler >> wrote message"),
-                            Err(err) => warn!("req_handler >> error writing message: {}", err)
-                        };
+                        IPC::write(shm, res_mutex, c_sig, m);
                     },
                     Err(err) => warn!("req_handler >> error reading message: {}", err),
                 }

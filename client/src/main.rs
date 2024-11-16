@@ -34,24 +34,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         },
     };
 
-    let ipc_clone_1 = Arc::clone(&ipc);
-    if test_mode {
-        thread::spawn(move || {
-            let inner_clone = Arc::clone(&ipc_clone_1);
-            gen::generate_messages(inner_clone);
-        });
-    }
-
-    let ipc_clone_2 = Arc::clone(&ipc);
+    let ipc_clone = Arc::clone(&ipc);
     thread::spawn(move || loop {
-        let inner_clone = Arc::clone(&ipc_clone_2);
-        handler::input_handler(inner_clone);
+        let inner_clone = Arc::clone(&ipc_clone);
+        handler::response_handler(inner_clone);
     });
 
-    let ipc_clone_3 = Arc::clone(&ipc);
+    let ipc_clone = Arc::clone(&ipc);
+    gen::generate_messages(ipc_clone);
+
+    let ipc_clone = Arc::clone(&ipc);
     thread::spawn(move || loop {
-        let inner_clone = Arc::clone(&ipc_clone_3);
-        handler::response_handler(inner_clone);
+        let inner_clone = Arc::clone(&ipc_clone);
+        handler::input_handler(inner_clone);
     });
 
     signal::ctrl_c().await?;

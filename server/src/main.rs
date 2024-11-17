@@ -37,12 +37,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // waits for requests and loop    
     let ipc_clone = Arc::clone(&ipc);
     thread::spawn(move || loop {
-        let inner_clone = Arc::clone(&ipc_clone);
-        handler::request_handler(inner_clone);
+        handler::request_handler(&ipc_clone);
     });
 
     signal::ctrl_c().await?;
-    println!("ctrl-c received!");
+    info!(">> SIGINT received!");
 
     match ipc.clean() {
         Ok(_) => info!("IPC >> cleaned successfully"),

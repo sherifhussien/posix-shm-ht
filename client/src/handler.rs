@@ -11,7 +11,7 @@ use utils::shared_mem::SharedMemory;
 use utils::message::{Message, MessageType, VALUE_SIZE};
 
 
-pub fn input_handler(ipc: Arc<IPC>) {
+pub fn input_handler(ipc: &Arc<IPC>) {
 
     println!(">> Enter a command: ");
 
@@ -26,14 +26,14 @@ pub fn input_handler(ipc: Arc<IPC>) {
     }
 
     match input[0] {
-        "get" => get_handler(ipc, input),
-        "insert" => insert_handler(ipc, input),
-        "remove" => remove_handler(ipc, input),
+        "get" => get_handler(&ipc, input),
+        "insert" => insert_handler(&ipc, input),
+        "remove" => remove_handler(&ipc, input),
         _ => println!(">> Unknown command!"),
     }
 }
 
-fn get_handler(ipc: Arc<IPC>, input: Vec<&str>) {
+fn get_handler(ipc: &Arc<IPC>, input: Vec<&str>) {
     if input.len() != 2 {
         println!("Invalid command!");
         return;
@@ -51,7 +51,7 @@ fn get_handler(ipc: Arc<IPC>, input: Vec<&str>) {
     }
 }
 
-fn insert_handler(ipc: Arc<IPC>, input: Vec<&str>) {
+fn insert_handler(ipc: &Arc<IPC>, input: Vec<&str>) {
     if input.len() != 3 {
         println!("Invalid command!");
         return;
@@ -69,7 +69,7 @@ fn insert_handler(ipc: Arc<IPC>, input: Vec<&str>) {
     }
 }
 
-fn remove_handler(ipc: Arc<IPC>, input: Vec<&str>) {
+fn remove_handler(ipc: &Arc<IPC>, input: Vec<&str>) {
     if input.len() != 2 {
         println!("Invalid command!");
         return;
@@ -87,7 +87,7 @@ fn remove_handler(ipc: Arc<IPC>, input: Vec<&str>) {
     }
 }
 
-pub fn response_handler(ipc: Arc<IPC>) {
+pub fn response_handler(ipc: &Arc<IPC>) {
     // wait for message on response buffer
     match sem::wait(ipc.c_sig) {
         Ok(_) => (),
@@ -99,8 +99,8 @@ pub fn response_handler(ipc: Arc<IPC>) {
 
     // start thread that consume the message
     let ipc_clone = Arc::clone(&ipc);
-    thread::spawn(|| {
-        match read(ipc_clone) {
+    thread::spawn(move || {
+        match read(&ipc_clone) {
             Ok(message) => info!("response_handler >> read message: {:?} {:?} {:?}", message.typ, Message::deserialize_key(message.key), Message::deserialize_value(message.value)),
             Err(err) => warn!("response_handler >> error reading message: {}", err),
         }
@@ -108,14 +108,14 @@ pub fn response_handler(ipc: Arc<IPC>) {
 }
 
 // writes message to shm
-pub fn write(ipc: Arc<IPC>, message: Message) -> io::Result<()> {  
+pub fn write(ipc: &Arc<IPC>, message: Message) -> io::Result<()> {
     let shm: &mut SharedMemory = unsafe { &mut *ipc.shm_ptr };
     shmem::enqueue(shm, ipc.req_mutex, ipc.s_sig, message.clone())?;
     Ok(())
 }
 
 // reads message from shm
-pub fn read(ipc: Arc<IPC>) -> io::Result<Message> {
+pub fn read(ipc: &Arc<IPC>) -> io::Result<Message> {
     let shm: &mut SharedMemory = unsafe { &mut *ipc.shm_ptr };
     let message = shmem::dequeue(shm, ipc.res_mutex)?;
     Ok(message)

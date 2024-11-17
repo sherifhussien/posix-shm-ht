@@ -12,7 +12,7 @@ use utils::message::{Message, MessageType, VALUE_SIZE};
 const N: i32 = 1000000;
 
 // writes random messages
-pub fn generate_messages(ipc: Arc<IPC>) {
+pub fn generate_messages(ipc: &Arc<IPC>) {
     let base_key = "key";
     let base_value = "value";
     let msg_types: [MessageType; 3] = [MessageType::Get, MessageType::Insert, MessageType::Remove];
@@ -20,8 +20,6 @@ pub fn generate_messages(ipc: Arc<IPC>) {
     let start = Instant::now();
     
     for _ in 1..N {
-        let ipc_clone = Arc::clone(&ipc);
-
         let random_type = rand::thread_rng().gen_range(0..=2);
         let random_key_index = rand::thread_rng().gen_range(1..=50);
         let key = format!("{}{}", base_key, random_key_index);
@@ -51,8 +49,7 @@ pub fn generate_messages(ipc: Arc<IPC>) {
                 }
             }
         };
-
-        handler::write(ipc_clone, message);
+        handler::write(&ipc, message);
     }
 
     let duration = start.elapsed();

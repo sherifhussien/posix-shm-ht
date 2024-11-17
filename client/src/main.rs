@@ -36,23 +36,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let ipc_clone = Arc::clone(&ipc);
     thread::spawn(move || loop {
-        let inner_clone = Arc::clone(&ipc_clone);
-        handler::response_handler(inner_clone);
+        handler::response_handler(&ipc_clone);
     });
 
     if test_mode {
-        let ipc_clone = Arc::clone(&ipc);
-        gen::generate_messages(ipc_clone);
+        gen::generate_messages(&ipc);
     }
 
     let ipc_clone = Arc::clone(&ipc);
     thread::spawn(move || loop {
-        let inner_clone = Arc::clone(&ipc_clone);
-        handler::input_handler(inner_clone);
+        handler::input_handler(&ipc_clone);
     });
 
     signal::ctrl_c().await?;
-    println!("ctrl-c received!");
+    info!(">> SIGINT received!");
 
     match ipc.clean() {
         Ok(_) => info!("IPC >> cleaned successfully"),

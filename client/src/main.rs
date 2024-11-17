@@ -40,8 +40,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         handler::response_handler(inner_clone);
     });
 
-    let ipc_clone = Arc::clone(&ipc);
-    gen::generate_messages(ipc_clone);
+    if test_mode {
+        let ipc_clone = Arc::clone(&ipc);
+        gen::generate_messages(ipc_clone);
+    }
 
     let ipc_clone = Arc::clone(&ipc);
     thread::spawn(move || loop {
